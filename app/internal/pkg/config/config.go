@@ -21,10 +21,8 @@ type Config struct {
 		ClientPort string `yaml:"client_port" env:"CLIENT_PORT"`
 	} `yaml:"client"`
 	Redis struct {
-		Host     string `yaml:"host" env:"REDIS_HOST"`
-		Port     string `yaml:"port" env:"REDIS_PORT"`
-		Password string `yaml:"password" env:"REDIS_PASSWORD"`
-		DB       int    `yaml:"db" env:"REDIS_DB"`
+		Host string `yaml:"host" env:"REDIS_HOST"`
+		Port string `yaml:"port" env:"REDIS_PORT"`
 	} `yaml:"redis"`
 	HashCash struct {
 		RequiredZerosCount int   `yaml:"required_zero_count" env:"REQUIRED_ZEROS_COUNT"` // The number of leading zeros required in the hash for proof of work (server-side only)
@@ -44,7 +42,7 @@ var once sync.Once
 
 func GetConfig() *Config {
 	once.Do(func() {
-		flag.StringVar(&configPath, FlagConfigPathName, "/Users/romanzaitsev/Desktop/Code/faraway/configs/config.yaml", "this is app config file")
+		flag.StringVar(&configPath, FlagConfigPathName, "/Users/romanzaitsev/Desktop/faraway/configs/config.yaml", "this is app config file")
 		flag.Parse()
 
 		log.Print("config init")

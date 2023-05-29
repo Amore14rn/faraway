@@ -17,8 +17,8 @@ type Redis struct {
 func NewRedis(ctx context.Context, cfg *config.Config) (*Redis, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     cfg.Redis.Host + ":" + cfg.Redis.Port,
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
+		Password: "",
+		DB:       0,
 	})
 
 	err := rdb.Set(ctx, "key", "value", 0).Err()
