@@ -6,8 +6,8 @@ Client:
   ClientHost: localhost,
   ClientPort: 3333
 Redis:  
-  CacheHost: localhost,
-  CachePort: 6379,
+  Host: localhost,
+  Port: 6379,
 HashcashZerosCount: 3,
 HashcashDuration": 300,
 HashcashMaxIterations: 1000000

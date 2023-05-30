@@ -15,4 +15,3 @@ FROM scratch
 COPY --from=builder /build/main /
 
 ENTRYPOINT ["/main"]
-
