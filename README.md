@@ -1,5 +1,10 @@
 ##Faraway test
 
+
+In folder app/internal/configs in file configs change path to your config file
+
+
+
 install:
 	go mod download
 
@@ -15,4 +20,7 @@ start-client:
 
 start:
 	docker-compose up --abort-on-container-exit --force-recreate --build server --build client
+
+
+
 
