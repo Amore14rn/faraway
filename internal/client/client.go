@@ -9,11 +9,12 @@ import (
 	"net"
 	"time"
 
-	"github.com/Amore14rn/faraway/app/internal/pkg/config"
-	"github.com/Amore14rn/faraway/app/internal/pkg/pow"
-	"github.com/Amore14rn/faraway/app/internal/pkg/protocol"
+	"github.com/Amore14rn/faraway/pkg/config"
+	"github.com/Amore14rn/faraway/pkg/pow"
+	"github.com/Amore14rn/faraway/pkg/protocol"
 )
 
+// Run - main function, launches client to connect and work with server on address
 func Run(ctx context.Context, address string) error {
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
@@ -34,17 +35,6 @@ func Run(ctx context.Context, address string) error {
 	}
 }
 
-func readConnMsg(reader *bufio.Reader) (string, error) {
-	return reader.ReadString('\n')
-}
-
-// sendMsg - send protocol message to connection
-func sendMsg(msg protocol.Data, conn io.Writer) error {
-	msgStr := fmt.Sprintf("%s\n", msg.Encode())
-	_, err := conn.Write([]byte(msgStr))
-	return err
-}
-
 // HandleConnection - scenario for TCP-client
 // 1. request challenge from server
 // 2. compute hashcash to check Proof of Work
@@ -55,8 +45,8 @@ func HandleConnection(ctx context.Context, readerConn io.Reader, writerConn io.W
 	reader := bufio.NewReader(readerConn)
 
 	// 1. requesting challenge
-	err := sendMsg(protocol.Data{
-		Header: protocol.ChallengeRequest,
+	err := sendMsg(protocol.Message{
+		Header: protocol.RequestChallenge,
 	}, writerConn)
 	if err != nil {
 		return "", fmt.Errorf("err send request: %w", err)
@@ -67,11 +57,11 @@ func HandleConnection(ctx context.Context, readerConn io.Reader, writerConn io.W
 	if err != nil {
 		return "", fmt.Errorf("err read msg: %w", err)
 	}
-	msg, err := protocol.DecodeData(msgStr)
+	msg, err := protocol.ParseMessage(msgStr)
 	if err != nil {
 		return "", fmt.Errorf("err parse msg: %w", err)
 	}
-	var hashcash pow.ProofOfWork
+	var hashcash pow.HashcashData
 	err = json.Unmarshal([]byte(msg.Payload), &hashcash)
 	if err != nil {
 		return "", fmt.Errorf("err parse hashcash: %w", err)
@@ -79,8 +69,8 @@ func HandleConnection(ctx context.Context, readerConn io.Reader, writerConn io.W
 	fmt.Println("got hashcash:", hashcash)
 
 	// 2. got challenge, compute hashcash
-	cfg := config.GetConfig()
-	hashcash, err = hashcash.ComputeProofOfWork(cfg.HashCash.MaxIterations)
+	conf := ctx.Value("config").(*config.Config)
+	hashcash, err = hashcash.ComputeHashcash(conf.HashcashMaxIterations)
 	if err != nil {
 		return "", fmt.Errorf("err compute hashcash: %w", err)
 	}
@@ -92,8 +82,8 @@ func HandleConnection(ctx context.Context, readerConn io.Reader, writerConn io.W
 	}
 
 	// 3. send challenge solution back to server
-	err = sendMsg(protocol.Data{
-		Header:  protocol.ChallengeResponse,
+	err = sendMsg(protocol.Message{
+		Header:  protocol.RequestResource,
 		Payload: string(byteData),
 	}, writerConn)
 	if err != nil {
@@ -106,9 +96,21 @@ func HandleConnection(ctx context.Context, readerConn io.Reader, writerConn io.W
 	if err != nil {
 		return "", fmt.Errorf("err read msg: %w", err)
 	}
-	msg, err = protocol.DecodeData(msgStr)
+	msg, err = protocol.ParseMessage(msgStr)
 	if err != nil {
 		return "", fmt.Errorf("err parse msg: %w", err)
 	}
 	return msg.Payload, nil
+}
+
+// readConnMsg - read string message from connection
+func readConnMsg(reader *bufio.Reader) (string, error) {
+	return reader.ReadString('\n')
+}
+
+// sendMsg - send protocol message to connection
+func sendMsg(msg protocol.Message, conn io.Writer) error {
+	msgStr := fmt.Sprintf("%s\n", msg.Stringify())
+	_, err := conn.Write([]byte(msgStr))
+	return err
 }

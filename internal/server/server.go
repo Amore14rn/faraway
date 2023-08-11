@@ -7,27 +7,28 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Amore14rn/faraway/pkg/config"
+	"github.com/Amore14rn/faraway/pkg/pow"
+	"github.com/Amore14rn/faraway/pkg/protocol"
 	"math/rand"
 	"net"
 	"strconv"
 	"time"
-
-	"github.com/Amore14rn/faraway/app/internal/pkg/config"
-	"github.com/Amore14rn/faraway/app/internal/pkg/pow"
-	"github.com/Amore14rn/faraway/app/internal/pkg/protocol"
 )
 
 // Quotes - const array of quotes to respond on client's request
 var Quotes = []string{
-	"The only limit to our realization of tomorrow will be our doubts of today.",
+	"All saints who remember to keep and do these sayings, " +
+		"walking in obedience to the commandments, " +
+		"shall receive health in their navel and marrow to their bones",
 
-	"Your time is limited, don't waste it living someone else's life.",
+	"And shall find wisdom and great treasures of knowledge, even hidden treasures",
 
-	"You miss 100% of the shots you don't take.",
+	"And shall run and not be weary, and shall walk and not faint",
 
-	"The future belongs to those who believe in the beauty of their dreams.",
-
-	"The best preparation for tomorrow is doing your best today.",
+	"And I, the Lord, give unto them a promise, " +
+		"that the destroying angel shall pass by them, " +
+		"as the children of Israel, and not slay them",
 }
 
 var ErrQuit = errors.New("client requests to close connection")
@@ -95,19 +96,19 @@ func handleConnection(ctx context.Context, conn net.Conn) {
 
 // ProcessRequest - process request from client
 // returns not-nil pointer to Message if needed to send it back to client
-func ProcessRequest(ctx context.Context, msgStr string, clientInfo string) (*protocol.Data, error) {
-	cfg := config.GetConfig()
-	msg, err := protocol.DecodeData(msgStr)
+func ProcessRequest(ctx context.Context, msgStr string, clientInfo string) (*protocol.Message, error) {
+	msg, err := protocol.ParseMessage(msgStr)
 	if err != nil {
 		return nil, err
 	}
 	// switch by header of msg
 	switch msg.Header {
-	case protocol.Exit:
+	case protocol.Quit:
 		return nil, ErrQuit
-	case protocol.ChallengeResponse:
+	case protocol.RequestChallenge:
 		fmt.Printf("client %s requests challenge\n", clientInfo)
 		// create new challenge for client
+		conf := ctx.Value("config").(*config.Config)
 		clock := ctx.Value("clock").(Clock)
 		cache := ctx.Value("cache").(Cache)
 		date := clock.Now()
@@ -115,14 +116,14 @@ func ProcessRequest(ctx context.Context, msgStr string, clientInfo string) (*pro
 		// add new created rand value to cache to check it later on RequestResource stage
 		// with duration in seconds
 		randValue := rand.Intn(100000)
-		err := cache.Add(randValue, int64(cfg.HashCash.RequiredZerosCount))
+		err := cache.Add(randValue, conf.HashcashDuration)
 		if err != nil {
 			return nil, fmt.Errorf("err add rand to cache: %w", err)
 		}
 
-		hashcash := pow.ProofOfWork{
+		hashcash := pow.HashcashData{
 			Version:    1,
-			ZerosCount: cfg.HashCash.RequiredZerosCount,
+			ZerosCount: conf.HashcashZerosCount,
 			Date:       date.Unix(),
 			Resource:   clientInfo,
 			Rand:       base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%d", randValue))),
@@ -132,15 +133,15 @@ func ProcessRequest(ctx context.Context, msgStr string, clientInfo string) (*pro
 		if err != nil {
 			return nil, fmt.Errorf("err marshal hashcash: %v", err)
 		}
-		msg := protocol.Data{
-			Header:  protocol.ChallengeResponse,
+		msg := protocol.Message{
+			Header:  protocol.ResponseChallenge,
 			Payload: string(hashcashMarshaled),
 		}
 		return &msg, nil
-	case protocol.ChallengeRequest:
+	case protocol.RequestResource:
 		fmt.Printf("client %s requests resource with payload %s\n", clientInfo, msg.Payload)
 		// parse client's solution
-		var hashcash pow.ProofOfWork
+		var hashcash pow.HashcashData
 		err := json.Unmarshal([]byte(msg.Payload), &hashcash)
 		if err != nil {
 			return nil, fmt.Errorf("err unmarshal hashcash: %w", err)
@@ -149,7 +150,7 @@ func ProcessRequest(ctx context.Context, msgStr string, clientInfo string) (*pro
 		if hashcash.Resource != clientInfo {
 			return nil, fmt.Errorf("invalid hashcash resource")
 		}
-
+		conf := ctx.Value("config").(*config.Config)
 		clock := ctx.Value("clock").(Clock)
 		cache := ctx.Value("cache").(Cache)
 
@@ -173,7 +174,7 @@ func ProcessRequest(ctx context.Context, msgStr string, clientInfo string) (*pro
 		}
 
 		// sent solution should not be outdated
-		if clock.Now().Unix()-hashcash.Date > cfg.HashCash.ChallengeLifetime {
+		if clock.Now().Unix()-hashcash.Date > conf.HashcashDuration {
 			return nil, fmt.Errorf("challenge expired")
 		}
 		//to prevent indefinite computing on server if client sent hashcash with 0 counter
@@ -181,14 +182,14 @@ func ProcessRequest(ctx context.Context, msgStr string, clientInfo string) (*pro
 		if maxIter == 0 {
 			maxIter = 1
 		}
-		_, err = hashcash.ComputeProofOfWork(maxIter)
+		_, err = hashcash.ComputeHashcash(maxIter)
 		if err != nil {
 			return nil, fmt.Errorf("invalid hashcash")
 		}
 		//get random quote
 		fmt.Printf("client %s succesfully computed hashcash %s\n", clientInfo, msg.Payload)
-		msg := protocol.Data{
-			Header:  protocol.ResourceResponse,
+		msg := protocol.Message{
+			Header:  protocol.ResponseResource,
 			Payload: Quotes[rand.Intn(4)],
 		}
 		// delete rand from cache to prevent duplicated request with same hashcash value
@@ -200,8 +201,8 @@ func ProcessRequest(ctx context.Context, msgStr string, clientInfo string) (*pro
 }
 
 // sendMsg - send protocol message to connection
-func sendMsg(msg protocol.Data, conn net.Conn) error {
-	msgStr := fmt.Sprintf("%s\n", msg.Encode())
+func sendMsg(msg protocol.Message, conn net.Conn) error {
+	msgStr := fmt.Sprintf("%s\n", msg.Stringify())
 	_, err := conn.Write([]byte(msgStr))
 	return err
 }

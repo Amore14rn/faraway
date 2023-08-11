@@ -1,17 +1,17 @@
-FROM golang:1.20.3 as builder
+FROM golang:1.17.8 AS builder
 
-WORKDIR /app
+WORKDIR /build
 
-COPY go.mod go.sum ./
+COPY . .
 
 RUN go mod download
 
-COPY ./app/cmd/client ./cmd/client
-
 RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./cmd/client
 
+# multistage build to copy only binary and config
 FROM scratch
 
 COPY --from=builder /build/main /
+COPY --from=builder /build/config/config.json /config/config.json
 
 ENTRYPOINT ["/main"]
