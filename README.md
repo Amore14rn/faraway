@@ -10,33 +10,33 @@
 ````
 faraway - |
           |__cmd|
-                |__client|
-                |        |__main.go
-                |__server|
-                         |__main.go
+          |     |__client|
+          |     |        |__main.go
+          |     |__server|
+          |              |__main.go
           |__internal|
-                     |__client|
-                     |         |__client.go
-                     |         |__client_test.go
-                     |__server|
-                              |__server.go
-                              |__server_test.go
+          |          |__client|
+          |          |        |__client.go
+          |          |        |__client_test.go
+          |          |__server|
+          |                   |__server.go
+          |                   |__server_test.go
           |__pkg|
-                |__pow|
-                |      |__pow.go
-                |      |__pow_test.go
-                |config|
-                |       |__config.go  
-                |clock|
-                |     |__clock.go
-                |
-                |protocol|
-                |        |__protocol.go
-                |        |__protocol_test.go
-                |
-                |redis|
-                |     |__redis.go
-                |     |__memory.go
+          |     |__pow|
+          |     |     |__pow.go
+          |     |     |__pow_test.go
+          |     |config|
+          |     |      |__config.go  
+          |     |clock|
+          |     |     |__clock.go
+          |     |
+          |     |protocol|
+          |     |        |__protocol.go
+          |     |        |__protocol_test.go
+          |     |
+          |     |redis|
+          |     |     |__redis.go
+          |     |     |__memory.go
           |
           |_.gitignore
           |_go.mod
