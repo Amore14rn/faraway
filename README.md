@@ -7,7 +7,7 @@
 - [Installation](#Installation)
 - [Testing](#Testing)
 
-
+````
 faraway - |
           |__cmd|
                 |__client|
@@ -45,7 +45,7 @@ faraway - |
           |_docker-compose.yml
           |_README.md
           |_Makefile
-
+````
 
 ## AboutTask
 Test task for Server Engineer
