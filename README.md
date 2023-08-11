@@ -3,20 +3,62 @@
 <h3 align="center">Faraway test task</h3>
 
 - [AboutTask](#AboutTask)
+- [Requirements](#Requirements)
 - [Installation](#Installation)
 - [Testing](#Testing)
 
+
+faraway - |
+          |__cmd|
+                |__client|
+                |        |__main.go
+                |__server|
+                         |__main.go
+          |__internal|
+                     |__client|
+                     |         |__client.go
+                     |         |__client_test.go
+                     |__server|
+                              |__server.go
+                              |__server_test.go
+          |__pkg|
+                |__pow|
+                |      |__pow.go
+                |      |__pow_test.go
+                |config|
+                |       |__config.go  
+                |clock|
+                |     |__clock.go
+                |
+                |protocol|
+                |        |__protocol.go
+                |        |__protocol_test.go
+                |
+                |redis|
+                |     |__redis.go
+                |     |__memory.go
+          |
+          |_.gitignore
+          |_go.mod
+          |_client.Dockerfile
+          |_server.Dockerfile    
+          |_docker-compose.yml
+          |_README.md
+          |_Makefile
 
 
 ## AboutTask
 Test task for Server Engineer
 
 Design and implement “Word of Wisdom” tcp server.  
-• TCP server should be protected from DDOS attacks with the Prof of Work (https://en.wikipedia.org/wiki/Proof_of_work), the challenge-response protocol should be used.  
-• The choice of the POW algorithm should be explained.  
-• After Prof Of Work verification, server should send one of the quotes from “word of wisdom” book or any other collection of the quotes.  
-• Docker file should be provided both for the server and for the client that solves the POW challenge
+- TCP server should be protected from DDOS attacks with the Prof of Work (https://en.wikipedia.org/wiki/Proof_of_work), the challenge-response protocol should be used.  
+- The choice of the POW algorithm should be explained.  
+- After Prof Of Work verification, server should send one of the quotes from “word of wisdom” book or any other collection of the quotes.  
+- Docker file should be provided both for the server and for the client that solves the POW challenge
 
+## Requirements
+- 
+-
 
 ## Installation
 install:
