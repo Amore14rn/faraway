@@ -2,10 +2,15 @@
 
 <h3 align="center">Faraway test task</h3>
 
+- [Schema](#Schema)
 - [AboutTask](#AboutTask)
+- [Task](#Task)
 - [Requirements](#Requirements)
 - [Installation](#Installation)
 - [Testing](#Testing)
+
+
+## Schema
 
 ````
 faraway - |
@@ -55,6 +60,21 @@ Design and implement “Word of Wisdom” tcp server.
 - The choice of the POW algorithm should be explained.  
 - After Prof Of Work verification, server should send one of the quotes from “word of wisdom” book or any other collection of the quotes.  
 - Docker file should be provided both for the server and for the client that solves the POW challenge
+
+## Task
+
+- SHA-256 (Bitcoin):
+  :Преимущества: Широко известен, имеет большое сообщество и высокий уровень безопасности благодаря своей распространенности и долгому времени работы.
+  :Недостатки: Майнинг на ASIC-устройствах может привести к централизации, так как оборудование ASIC дорого и не доступно каждому.
+- Ethash (Ethereum):
+  :Преимущества: Ориентирован на GPU, что способствует более равномерному распределению майнинга. Майнинг на стандартных видеокартах доступен широкому кругу людей.
+  :Недостатки: Требует большого объема памяти, что может быть непрактичным для мобильных устройств или устройств с ограниченной памятью.
+- Scrypt (Litecoin):
+  :Преимущества: Также ориентирован на GPU и менее подвержен централизации через ASIC. Относительно более доступный майнинг для обычных пользователей.
+  :Недостатки: Возможно, менее безопасен, чем более распространенные алгоритмы.
+- RandomX (Monero):
+  :Преимущества: Сложный для реализации на ASIC, что поддерживает более равномерное распределение майнинга. Майнинг может быть выполнен на обычных компьютерах.
+  :Недостатки: Требует большого объема памяти и вычислительной мощности, что может быть недоступно для некоторых устройств.
 
 ## Requirements
 
