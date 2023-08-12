@@ -189,6 +189,26 @@ start:
 	docker-compose up --abort-on-container-exit --force-recreate --build server --build client
 ````
 
+```` bash
+    .PHONY: .install-linter
+.install-linter:
+	### INSTALL GOLANGCI-LINT ###
+	[ -f $(GOLANCI_LINT) ] || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(PROJECT_BIN) $(GOLANCI_LINT_VERSION)
+````
+
+```` bash
+   .PHONY: lint
+lint: .install-linter
+	### RUN GOLANGCI-LINT ###
+	$(GOLANGCI_LINT) run ./... --config=./.golangci.yml
+````
+
+```` bash
+   .PHONY: lint-fast
+lint-fast: .install-linter
+	$(GOLANGCI_LINT) run ./... --fast --config=./.golangci.yml
+
+````
 
 ## Testing
 
@@ -196,5 +216,8 @@ start:
 ```bash 
 go test
 ```
+
+
+
 
 
