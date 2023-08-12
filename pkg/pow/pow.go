@@ -24,7 +24,7 @@ func (h HashcashData) Stringify() string {
 	return fmt.Sprintf("%d:%d:%d:%s::%s:%d", h.Version, h.ZerosCount, h.Date, h.Resource, h.Rand, h.Counter)
 }
 
-// sha256Hash - calculates sha1 hash from given string
+// sha256Hash - calculates sha256 hash from given string
 func sha256Hash(data string) string {
 	h := sha256.New()
 	h.Write([]byte(data))

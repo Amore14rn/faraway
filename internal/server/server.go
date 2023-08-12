@@ -18,17 +18,13 @@ import (
 
 // Quotes - const array of quotes to respond on client's request
 var Quotes = []string{
-	"All saints who remember to keep and do these sayings, " +
-		"walking in obedience to the commandments, " +
-		"shall receive health in their navel and marrow to their bones",
+	"Wisdom is the daughter of experience.",
 
-	"And shall find wisdom and great treasures of knowledge, even hidden treasures",
+	"Knowledge speaks, but wisdom listens.",
 
-	"And shall run and not be weary, and shall walk and not faint",
+	"When given the choice, be wise in actions over wise in words.",
 
-	"And I, the Lord, give unto them a promise, " +
-		"that the destroying angel shall pass by them, " +
-		"as the children of Israel, and not slay them",
+	"The wise don't wait to enjoy the view from the top of the mountain, they recognize the beauty in the journey upwards",
 }
 
 var ErrQuit = errors.New("client requests to close connection")
