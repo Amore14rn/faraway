@@ -109,103 +109,101 @@ func ProcessRequest(ctx context.Context, msgStr string, clientInfo string) (*pro
 	if err != nil {
 		return nil, err
 	}
-	// switch by header of msg
+
 	switch msg.Header {
 	case protocol.Quit:
 		return nil, ErrQuit
 	case protocol.RequestChallenge:
-		fmt.Printf("client %s requests challenge\n", clientInfo)
-		// create new challenge for client
-		conf := ctx.Value("config").(*config.Config)
-		clock := ctx.Value("clock").(Clock)
-		cache := ctx.Value("cache").(Cache)
-		date := clock.Now()
-
-		// add new created rand value to cache to check it later on RequestResource stage
-		// with duration in seconds
-		randValue := rand.Intn(100000)
-		err := cache.Add(randValue, conf.HashcashDuration)
-		if err != nil {
-			return nil, fmt.Errorf("err add rand to cache: %w", err)
-		}
-
-		hashcash := pow.HashcashData{
-			Version:    1,
-			ZerosCount: conf.HashcashZerosCount,
-			Date:       date.Unix(),
-			Resource:   clientInfo,
-			Rand:       base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%d", randValue))),
-			Counter:    0,
-		}
-		hashcashMarshaled, err := json.Marshal(hashcash)
-		if err != nil {
-			return nil, fmt.Errorf("err marshal hashcash: %v", err)
-		}
-		msg := protocol.Message{
-			Header:  protocol.ResponseChallenge,
-			Payload: string(hashcashMarshaled),
-		}
-		return &msg, nil
+		return handleChallengeRequest(ctx, clientInfo)
 	case protocol.RequestResource:
-		fmt.Printf("client %s requests resource with payload %s\n", clientInfo, msg.Payload)
-		// parse client's solution
-		var hashcash pow.HashcashData
-		err := json.Unmarshal([]byte(msg.Payload), &hashcash)
-		if err != nil {
-			return nil, fmt.Errorf("err unmarshal hashcash: %w", err)
-		}
-		// validate hashcash params
-		if hashcash.Resource != clientInfo {
-			return nil, fmt.Errorf("invalid hashcash resource")
-		}
-		conf := ctx.Value("config").(*config.Config)
-		clock := ctx.Value("clock").(Clock)
-		cache := ctx.Value("cache").(Cache)
-
-		// decoding rand from base64 field in received client's hashcash
-		randValueBytes, err := base64.StdEncoding.DecodeString(hashcash.Rand)
-		if err != nil {
-			return nil, fmt.Errorf("err decode rand: %w", err)
-		}
-		randValue, err := strconv.Atoi(string(randValueBytes))
-		if err != nil {
-			return nil, fmt.Errorf("err decode rand: %w", err)
-		}
-
-		// if rand exists in cache, it means, that hashcash is valid and really challenged by this server in past
-		exists, err := cache.Get(randValue)
-		if err != nil {
-			return nil, fmt.Errorf("err get rand from cache: %w", err)
-		}
-		if !exists {
-			return nil, fmt.Errorf("challenge expired or not sent")
-		}
-
-		// sent solution should not be outdated
-		if clock.Now().Unix()-hashcash.Date > conf.HashcashDuration {
-			return nil, fmt.Errorf("challenge expired")
-		}
-		//to prevent indefinite computing on server if client sent hashcash with 0 counter
-		maxIter := hashcash.Counter
-		if maxIter == 0 {
-			maxIter = 1
-		}
-		_, err = hashcash.ComputeHashcash(maxIter)
-		if err != nil {
-			return nil, fmt.Errorf("invalid hashcash")
-		}
-		//get random quote
-		fmt.Printf("client %s succesfully computed hashcash %s\n", clientInfo, msg.Payload)
-		msg := protocol.Message{
-			Header:  protocol.ResponseResource,
-			Payload: Quotes[rand.Intn(4)],
-		}
-		// delete rand from cache to prevent duplicated request with same hashcash value
-		cache.Delete(randValue)
-		return &msg, nil
+		return handleResourceRequest(ctx, clientInfo, msg.Payload)
 	default:
 		return nil, fmt.Errorf("unknown header")
 	}
+}
+
+func handleChallengeRequest(ctx context.Context, clientInfo string) (*protocol.Message, error) {
+	fmt.Printf("client %s requests challenge\n", clientInfo)
+
+	conf := ctx.Value("config").(*config.Config)
+	clock := ctx.Value("clock").(Clock)
+	cache := ctx.Value("cache").(Cache)
+	date := clock.Now()
+
+	randValue := rand.Intn(100000)
+	err := cache.Add(randValue, conf.HashcashDuration)
+	if err != nil {
+		return nil, fmt.Errorf("err add rand to cache: %w", err)
+	}
+
+	hashcash := pow.HashcashData{
+		Version:    1,
+		ZerosCount: conf.HashcashZerosCount,
+		Date:       date.Unix(),
+		Resource:   clientInfo,
+		Rand:       base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%d", randValue))),
+		Counter:    0,
+	}
+	hashcashMarshaled, err := json.Marshal(hashcash)
+	if err != nil {
+		return nil, fmt.Errorf("err marshal hashcash: %v", err)
+	}
+	msg := protocol.Message{
+		Header:  protocol.ResponseChallenge,
+		Payload: string(hashcashMarshaled),
+	}
+	return &msg, nil
+}
+
+func handleResourceRequest(ctx context.Context, clientInfo string, payload string) (*protocol.Message, error) {
+	fmt.Printf("client %s requests resource with payload %s\n", clientInfo, payload)
+
+	var hashcash pow.HashcashData
+	err := json.Unmarshal([]byte(payload), &hashcash)
+	if err != nil {
+		return nil, fmt.Errorf("err unmarshal hashcash: %w", err)
+	}
+
+	conf := ctx.Value("config").(*config.Config)
+	clock := ctx.Value("clock").(Clock)
+	cache := ctx.Value("cache").(Cache)
+
+	randValueBytes, err := base64.StdEncoding.DecodeString(hashcash.Rand)
+	if err != nil {
+		return nil, fmt.Errorf("err decode rand: %w", err)
+	}
+	randValue, err := strconv.Atoi(string(randValueBytes))
+	if err != nil {
+		return nil, fmt.Errorf("err decode rand: %w", err)
+	}
+
+	exists, err := cache.Get(randValue)
+	if err != nil {
+		return nil, fmt.Errorf("err get rand from cache: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("challenge expired or not sent")
+	}
+
+	if clock.Now().Unix()-hashcash.Date > conf.HashcashDuration {
+		return nil, fmt.Errorf("challenge expired")
+	}
+	maxIter := hashcash.Counter
+	if maxIter == 0 {
+		maxIter = 1
+	}
+	_, err = hashcash.ComputeHashcash(maxIter)
+	if err != nil {
+		return nil, fmt.Errorf("invalid hashcash")
+	}
+
+	fmt.Printf("client %s successfully computed hashcash %s\n", clientInfo, payload)
+	msg := protocol.Message{
+		Header:  protocol.ResponseResource,
+		Payload: Quotes[rand.Intn(4)],
+	}
+	cache.Delete(randValue)
+	return &msg, nil
 }
 
 // sendMsg - send protocol message to connection
