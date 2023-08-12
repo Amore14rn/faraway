@@ -1,7 +1,7 @@
 package pow
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"fmt"
 )
 
@@ -24,9 +24,9 @@ func (h HashcashData) Stringify() string {
 	return fmt.Sprintf("%d:%d:%d:%s::%s:%d", h.Version, h.ZerosCount, h.Date, h.Resource, h.Rand, h.Counter)
 }
 
-// sha1Hash - calculates sha1 hash from given string
-func sha1Hash(data string) string {
-	h := sha1.New()
+// sha256Hash - calculates sha1 hash from given string
+func sha256Hash(data string) string {
+	h := sha256.New()
 	h.Write([]byte(data))
 	bs := h.Sum(nil)
 	return fmt.Sprintf("%x", bs)
@@ -51,7 +51,7 @@ func IsHashCorrect(hash string, zerosCount int) bool {
 func (h HashcashData) ComputeHashcash(maxIterations int) (HashcashData, error) {
 	for h.Counter <= maxIterations || maxIterations <= 0 {
 		header := h.Stringify()
-		hash := sha1Hash(header)
+		hash := sha256Hash(header)
 		//fmt.Println(header, hash)
 		if IsHashCorrect(hash, h.ZerosCount) {
 			return h, nil

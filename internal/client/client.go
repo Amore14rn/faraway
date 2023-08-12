@@ -31,7 +31,7 @@ func Run(ctx context.Context, address string) error {
 			return err
 		}
 		fmt.Println("quote result:", message)
-		time.Sleep(5 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 }
 

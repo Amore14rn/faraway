@@ -10,9 +10,9 @@ import (
 )
 
 func TestHash(t *testing.T) {
-	result := sha1Hash("testdatalong 1231378612")
+	result := sha256Hash("testdatalong 1231378612")
 	assert.Equal(t, "26e48dc4c6fd473c87e9c4928d8f4bd45f508603", result)
-	result = sha1Hash("super800")
+	result = sha256Hash("super800")
 	assert.Equal(t, "a6a735584d2a32fbbd5af4cb6d9931167d7bb2db", result)
 }
 
