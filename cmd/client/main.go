@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-
 	"github.com/Amore14rn/faraway/internal/client"
 	"github.com/Amore14rn/faraway/pkg/config"
+	"github.com/Amore14rn/faraway/pkg/utils"
 )
 
 func main() {
@@ -22,11 +22,19 @@ func main() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, "config", configInst)
 
-	address := fmt.Sprintf("%s:%d", configInst.ServerHost, configInst.ServerPort)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	// run client
-	err = client.Run(ctx, address)
-	if err != nil {
-		fmt.Println("client error:", err)
-	}
+	// Run client in a goroutine
+	go func() {
+		clientAddress := fmt.Sprintf("%s:%d", configInst.ServerHost, configInst.ServerPort)
+		if err := client.Run(ctx, clientAddress); err != nil {
+			fmt.Println("client error:", err)
+		}
+	}()
+
+	// Initiate graceful shutdown
+	utils.GracefulShutdown(ctx)
+
+	fmt.Println("Client has been gracefully stopped")
 }

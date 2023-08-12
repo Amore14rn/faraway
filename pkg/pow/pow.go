@@ -5,9 +5,6 @@ import (
 	"fmt"
 )
 
-// to avoid magic comparisons
-const zeroByte = 48
-
 // HashcashData - struct with fields of Hashcash
 // https://en.wikipedia.org/wiki/Hashcash
 type HashcashData struct {
@@ -24,16 +21,33 @@ func (h HashcashData) Stringify() string {
 	return fmt.Sprintf("%d:%d:%d:%s::%s:%d", h.Version, h.ZerosCount, h.Date, h.Resource, h.Rand, h.Counter)
 }
 
+// ComputeHashcash - calculates correct hashcash by bruteforce
+// until the resulting hash satisfies the condition of IsHashCorrect
+// maxIterations to prevent endless computing (0 or -1 to disable it)
+func (h HashcashData) ComputeHashcash(maxIterations int) (HashcashData, error) {
+	for h.Counter <= maxIterations || maxIterations <= 0 {
+		header := h.Stringify()
+		hash := h.sha256Hash(header)
+		if h.IsHashCorrect(hash, h.ZerosCount) {
+			return h, nil
+		}
+		// if hash don't have needed count of leading zeros, we are increasing counter and try next hash
+		h.Counter++
+	}
+	return h, fmt.Errorf("max iterations exceeded")
+}
+
 // sha256Hash - calculates sha256 hash from given string
-func sha256Hash(data string) string {
-	h := sha256.New()
-	h.Write([]byte(data))
-	bs := h.Sum(nil)
+func (h HashcashData) sha256Hash(data string) string {
+	hash := sha256.New()
+	hash.Write([]byte(data))
+	bs := hash.Sum(nil)
 	return fmt.Sprintf("%x", bs)
 }
 
 // IsHashCorrect - checks that hash has leading <zerosCount> zeros
-func IsHashCorrect(hash string, zerosCount int) bool {
+func (h HashcashData) IsHashCorrect(hash string, zerosCount int) bool {
+	const zeroByte = 48
 	if zerosCount > len(hash) {
 		return false
 	}
@@ -43,21 +57,4 @@ func IsHashCorrect(hash string, zerosCount int) bool {
 		}
 	}
 	return true
-}
-
-// ComputeHashcash - calculates correct hashcash by bruteforce
-// until the resulting hash satisfies the condition of IsHashCorrect
-// maxIterations to prevent endless computing (0 or -1 to disable it)
-func (h HashcashData) ComputeHashcash(maxIterations int) (HashcashData, error) {
-	for h.Counter <= maxIterations || maxIterations <= 0 {
-		header := h.Stringify()
-		hash := sha256Hash(header)
-		//fmt.Println(header, hash)
-		if IsHashCorrect(hash, h.ZerosCount) {
-			return h, nil
-		}
-		// if hash don't have needed count of leading zeros, we are increasing counter and try next hash
-		h.Counter++
-	}
-	return h, fmt.Errorf("max iterations exceeded")
 }

@@ -5,13 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net"
-	"time"
-
 	"github.com/Amore14rn/faraway/pkg/config"
 	"github.com/Amore14rn/faraway/pkg/pow"
 	"github.com/Amore14rn/faraway/pkg/protocol"
+	"io"
+	"net"
+	"time"
 )
 
 // Run - main function, launches client to connect and work with server on address
@@ -31,7 +30,7 @@ func Run(ctx context.Context, address string) error {
 			return err
 		}
 		fmt.Println("quote result:", message)
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }
 

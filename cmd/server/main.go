@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/Amore14rn/faraway/pkg/redis"
-	"math/rand"
-	"time"
-
 	"github.com/Amore14rn/faraway/internal/server"
 	"github.com/Amore14rn/faraway/pkg/clock"
 	"github.com/Amore14rn/faraway/pkg/config"
+	"github.com/Amore14rn/faraway/pkg/redis"
+	"github.com/Amore14rn/faraway/pkg/utils"
+	"math/rand"
+	"time"
 )
 
 func main() {
@@ -38,9 +38,13 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	// run server
-	serverAddress := fmt.Sprintf("%s:%d", configInst.ServerHost, configInst.ServerPort)
-	err = server.Run(ctx, serverAddress)
-	if err != nil {
-		fmt.Println("server error:", err)
-	}
+	go func() {
+		serverAddress := fmt.Sprintf("%s:%d", configInst.ServerHost, configInst.ServerPort)
+		if err := server.Run(ctx, serverAddress); err != nil {
+			fmt.Println("server error:", err)
+		}
+	}()
+
+	// Initiate graceful shutdown
+	utils.GracefulShutdown(ctx)
 }
