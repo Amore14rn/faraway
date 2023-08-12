@@ -13,15 +13,90 @@ import (
 	"time"
 )
 
-// Run - main function, launches client to connect and work with server on address
+type Client struct {
+	conn   net.Conn
+	reader *bufio.Reader
+	writer io.Writer
+}
+
+func NewClient(conn net.Conn) *Client {
+	return &Client{
+		conn:   conn,
+		reader: bufio.NewReader(conn),
+		writer: conn,
+	}
+}
+
+func (c *Client) Close() error {
+	return c.conn.Close()
+}
+
+func (c *Client) RequestChallenge() (*pow.HashcashData, error) {
+	err := sendMsg(protocol.Message{Header: protocol.RequestChallenge}, c.writer)
+	if err != nil {
+		return nil, fmt.Errorf("err send request: %w", err)
+	}
+
+	msgStr, err := readConnMsg(c.reader)
+	if err != nil {
+		return nil, fmt.Errorf("err read msg: %w", err)
+	}
+	msg, err := protocol.ParseMessage(msgStr)
+	if err != nil {
+		return nil, fmt.Errorf("err parse msg: %w", err)
+	}
+
+	var hashcash pow.HashcashData
+	err = json.Unmarshal([]byte(msg.Payload), &hashcash)
+	if err != nil {
+		return nil, fmt.Errorf("err parse hashcash: %w", err)
+	}
+
+	return &hashcash, nil
+}
+
+func (c *Client) ComputeAndSendHashcash(ctx context.Context, hashcash *pow.HashcashData, conf *config.Config) error {
+	computedHashcash, err := hashcash.ComputeHashcash(conf.HashcashMaxIterations)
+	if err != nil {
+		return fmt.Errorf("err compute hashcash: %w", err)
+	}
+
+	byteData, err := json.Marshal(computedHashcash)
+	if err != nil {
+		return fmt.Errorf("err marshal hashcash: %w", err)
+	}
+
+	err = sendMsg(protocol.Message{Header: protocol.RequestResource, Payload: string(byteData)}, c.writer)
+	if err != nil {
+		return fmt.Errorf("err send request: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) GetResultQuote() (string, error) {
+	msgStr, err := readConnMsg(c.reader)
+	if err != nil {
+		return "", fmt.Errorf("err read msg: %w", err)
+	}
+
+	msg, err := protocol.ParseMessage(msgStr)
+	if err != nil {
+		return "", fmt.Errorf("err parse msg: %w", err)
+	}
+
+	return msg.Payload, nil
+}
+
 func Run(ctx context.Context, address string) error {
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		return err
 	}
-
 	fmt.Println("connected to", address)
 	defer conn.Close()
+
+	client := NewClient(conn)
 
 	// Создаем канал для таймера
 	timerChan := time.NewTimer(0).C
@@ -30,7 +105,20 @@ func Run(ctx context.Context, address string) error {
 	for {
 		select {
 		case <-timerChan:
-			message, err := HandleConnection(ctx, conn, conn)
+			hashcash, err := client.RequestChallenge()
+			if err != nil {
+				return err
+			}
+			fmt.Println("got hashcash:", hashcash)
+
+			conf := ctx.Value("config").(*config.Config)
+			err = client.ComputeAndSendHashcash(ctx, hashcash, conf)
+			if err != nil {
+				return err
+			}
+			fmt.Println("challenge sent to server")
+
+			message, err := client.GetResultQuote()
 			if err != nil {
 				return err
 			}
@@ -43,74 +131,6 @@ func Run(ctx context.Context, address string) error {
 			return ctx.Err()
 		}
 	}
-}
-
-// HandleConnection - scenario for TCP-client
-// 1. request challenge from server
-// 2. compute hashcash to check Proof of Work
-// 3. send hashcash solution back to server
-// 4. get result quote from server
-// readerConn and writerConn divided to more convenient mock on testing
-func HandleConnection(ctx context.Context, readerConn io.Reader, writerConn io.Writer) (string, error) {
-	reader := bufio.NewReader(readerConn)
-
-	// 1. requesting challenge
-	err := sendMsg(protocol.Message{
-		Header: protocol.RequestChallenge,
-	}, writerConn)
-	if err != nil {
-		return "", fmt.Errorf("err send request: %w", err)
-	}
-
-	// reading and parsing response
-	msgStr, err := readConnMsg(reader)
-	if err != nil {
-		return "", fmt.Errorf("err read msg: %w", err)
-	}
-	msg, err := protocol.ParseMessage(msgStr)
-	if err != nil {
-		return "", fmt.Errorf("err parse msg: %w", err)
-	}
-	var hashcash pow.HashcashData
-	err = json.Unmarshal([]byte(msg.Payload), &hashcash)
-	if err != nil {
-		return "", fmt.Errorf("err parse hashcash: %w", err)
-	}
-	fmt.Println("got hashcash:", hashcash)
-
-	// 2. got challenge, compute hashcash
-	conf := ctx.Value("config").(*config.Config)
-	hashcash, err = hashcash.ComputeHashcash(conf.HashcashMaxIterations)
-	if err != nil {
-		return "", fmt.Errorf("err compute hashcash: %w", err)
-	}
-	fmt.Println("hashcash computed:", hashcash)
-	// marshal solution to json
-	byteData, err := json.Marshal(hashcash)
-	if err != nil {
-		return "", fmt.Errorf("err marshal hashcash: %w", err)
-	}
-
-	// 3. send challenge solution back to server
-	err = sendMsg(protocol.Message{
-		Header:  protocol.RequestResource,
-		Payload: string(byteData),
-	}, writerConn)
-	if err != nil {
-		return "", fmt.Errorf("err send request: %w", err)
-	}
-	fmt.Println("challenge sent to server")
-
-	// 4. get result quote from server
-	msgStr, err = readConnMsg(reader)
-	if err != nil {
-		return "", fmt.Errorf("err read msg: %w", err)
-	}
-	msg, err = protocol.ParseMessage(msgStr)
-	if err != nil {
-		return "", fmt.Errorf("err parse msg: %w", err)
-	}
-	return msg.Payload, nil
 }
 
 // readConnMsg - read string message from connection
