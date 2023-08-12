@@ -23,14 +23,25 @@ func Run(ctx context.Context, address string) error {
 	fmt.Println("connected to", address)
 	defer conn.Close()
 
+	// Создаем канал для таймера
+	timerChan := time.NewTimer(0).C
+
 	// client will send new request every 5 seconds endlessly
 	for {
-		message, err := HandleConnection(ctx, conn, conn)
-		if err != nil {
-			return err
+		select {
+		case <-timerChan:
+			message, err := HandleConnection(ctx, conn, conn)
+			if err != nil {
+				return err
+			}
+			fmt.Println("quote result:", message)
+
+			// Сброс таймера для следующей итерации
+			timerChan = time.After(5 * time.Second)
+
+		case <-ctx.Done():
+			return ctx.Err()
 		}
-		fmt.Println("quote result:", message)
-		time.Sleep(5 * time.Second)
 	}
 }
 

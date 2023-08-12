@@ -53,14 +53,26 @@ func Run(ctx context.Context, address string) error {
 	// Close the listener when the application closes.
 	defer listener.Close()
 	fmt.Println("listening", listener.Addr())
+
+	// Создаем канал для таймера
+	timerChan := time.NewTimer(1 * time.Second).C
+
 	for {
-		// Listen for an incoming connection.
-		conn, err := listener.Accept()
-		if err != nil {
-			return fmt.Errorf("error accept connection: %w", err)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timerChan:
+			// Listen for an incoming connection.
+			conn, err := listener.Accept()
+			if err != nil {
+				fmt.Println("error accept connection:", err)
+				continue
+			}
+			// Handle connections in a new goroutine.
+			go handleConnection(ctx, conn)
+			// Сброс таймера для следующей итерации
+			timerChan = time.NewTimer(1 * time.Second).C
 		}
-		// Handle connections in a new goroutine.
-		go handleConnection(ctx, conn)
 	}
 }
 
