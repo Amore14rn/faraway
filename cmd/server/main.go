@@ -47,4 +47,6 @@ func main() {
 
 	// Initiate graceful shutdown
 	utils.GracefulShutdown(ctx)
+
+	fmt.Println("Server has been gracefully stopped")
 }

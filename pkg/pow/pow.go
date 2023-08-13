@@ -5,7 +5,6 @@ import (
 	"fmt"
 )
 
-// HashcashData - struct with fields of Hashcash
 // https://en.wikipedia.org/wiki/Hashcash
 type HashcashData struct {
 	Version    int
